@@ -3,21 +3,23 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 // NBT with Governance.
 contract NanoByteToken is ERC20Capped, Ownable {
-    using SafeMath for uint256;
   
     constructor() ERC20('NanoByte Token','NBT') ERC20Capped(10000000000000000000000000000) {}
 
-    function mint(uint256 _amount) external onlyOwner  returns (bool) {
+    /// @notice Mints new tokens to the caller (owner)
+    /// @param _amount The amount of tokens to mint
+    function mint(uint256 _amount) external onlyOwner {
         _mint(_msgSender(), _amount);
         _moveDelegates(address(0), _delegates[_msgSender()], _amount);
-        return true;
     }
 
-    function mint(address _to, uint256 _amount) external onlyOwner {
+    /// @notice Mints new tokens to a specific address
+    /// @param _to The address to mint tokens to
+    /// @param _amount The amount of tokens to mint
+    function mintTo(address _to, uint256 _amount) external onlyOwner {
         _mint(_to, _amount);
         _moveDelegates(address(0), _delegates[_to], _amount);
     }
@@ -235,7 +237,7 @@ contract NanoByteToken is ERC20Capped, Ownable {
                 // decrease old representative
                 uint32 srcRepNum = numCheckpoints[srcRep];
                 uint256 srcRepOld = srcRepNum > 0 ? checkpoints[srcRep][srcRepNum - 1].votes : 0;
-                uint256 srcRepNew = srcRepOld.sub(amount);
+                uint256 srcRepNew = srcRepOld - amount;
                 _writeCheckpoint(srcRep, srcRepNum, srcRepOld, srcRepNew);
             }
 
@@ -243,7 +245,7 @@ contract NanoByteToken is ERC20Capped, Ownable {
                 // increase new representative
                 uint32 dstRepNum = numCheckpoints[dstRep];
                 uint256 dstRepOld = dstRepNum > 0 ? checkpoints[dstRep][dstRepNum - 1].votes : 0;
-                uint256 dstRepNew = dstRepOld.add(amount);
+                uint256 dstRepNew = dstRepOld + amount;
                 _writeCheckpoint(dstRep, dstRepNum, dstRepOld, dstRepNew);
             }
         }

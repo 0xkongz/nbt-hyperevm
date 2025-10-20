@@ -1,10 +1,8 @@
-/**
- * @type import('hardhat/config').HardhatUserConfig
- */
-import { task } from "hardhat/config"; 
-import "@nomiclabs/hardhat-waffle"
-import "@nomiclabs/hardhat-etherscan";
-let {
+import { HardhatUserConfig, task } from "hardhat/config";
+import "@nomicfoundation/hardhat-toolbox";
+import "@nomicfoundation/hardhat-verify";
+
+const {
   mnemonic,
   bscscanApiKey,
   privateKey
@@ -19,22 +17,49 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
   }
 });
 
-export default {
+const config: HardhatUserConfig = {
+  solidity: "0.8.4",
   networks: {
     testnet: {
-      url: `https://data-seed-prebsc-1-s1.binance.org:8545`,
-      accounts: [privateKey]
+      url: `https://rpc.hyperliquid-testnet.xyz/evm`,
+      accounts: [privateKey],
+      chainId: 998
     },
     mainnet: {
-      url: `https://bsc-dataseed.binance.org/`,
-      accounts: {mnemonic: mnemonic}
+      url: `https://rpc.hyperliquid.xyz/evm`,
+      accounts: [privateKey],
+      chainId: 999
     }
   },
-
-  etherscan: {
-    // Your API key for Etherscan
-    // Obtain one at https://bscscan.com/
-    apiKey: bscscanApiKey
+  sourcify: {
+    enabled: true,
+    apiUrl: "https://sourcify.parsec.finance",
+    browserUrl: "https://testnet.purrsec.com"
   },
-  solidity: "0.8.4",
+  etherscan: {
+    apiKey: {
+      testnet: bscscanApiKey || "dummy",
+      mainnet: bscscanApiKey || "dummy"
+    },
+    customChains: [
+      {
+        network: "testnet",
+        chainId: 998,
+        urls: {
+          apiURL: "https://sourcify.parsec.finance",
+          browserURL: "https://testnet.purrsec.com"
+        }
+      },
+      {
+        network: "mainnet",
+        chainId: 999,
+        urls: {
+          apiURL: "https://explorer.hyperliquid.xyz/api",
+          browserURL: "https://explorer.hyperliquid.xyz"
+        }
+      }
+    ]
+  }
 };
+
+export default config;

@@ -1,23 +1,19 @@
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
-import chai from "chai";
-import { solidity } from "ethereum-waffle";
-import { BigNumber, Contract, Signature,utils } from "ethers";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-
-chai.use(solidity);
+import { Contract } from "ethers";
+import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 
 describe("NBT", () => {
   let contract: Contract;
-  let owner: SignerWithAddress;
-  let alice: SignerWithAddress;
-  let bob: SignerWithAddress;
-  let tom: SignerWithAddress;
-  let delegator: SignerWithAddress;
-  let delegatee: SignerWithAddress;
-  let capped:BigNumber =ethers.utils.parseEther('10000000000');
-  let firstMint:BigNumber  =ethers.utils.parseEther('5500000000');
-  let secondMint:BigNumber =capped.sub(firstMint);
+  let owner: HardhatEthersSigner;
+  let alice: HardhatEthersSigner;
+  let bob: HardhatEthersSigner;
+  let tom: HardhatEthersSigner;
+  let delegator: HardhatEthersSigner;
+  let delegatee: HardhatEthersSigner;
+  let capped:bigint = ethers.parseEther('10000000000');
+  let firstMint:bigint  = ethers.parseEther('5500000000');
+  let secondMint:bigint = capped - firstMint;
   
   before(async () => {
     const NBTFactory = await ethers.getContractFactory(
@@ -32,7 +28,7 @@ describe("NBT", () => {
   });
 
   it("Should the right Name", async () => {
-    expect(await contract.name()).to.equal("Nano Byte Token");
+    expect(await contract.name()).to.equal("NanoByte Token");
   });
 
   it("Should the right Symbol", async () => {
@@ -40,7 +36,7 @@ describe("NBT", () => {
   });
 
   it("Should the right Owner", async () => {
-    expect(await contract.getOwner()).to.equal(owner.address);
+    expect(await contract.owner()).to.equal(owner.address);
   });
 
   it('Should be 18 decimals', async () => {
@@ -49,28 +45,28 @@ describe("NBT", () => {
 
   it("Should the right total supply after min", async () => {
     // https://ethereum.stackexchange.com/a/100009
-    await contract['mint(address,uint256)'](owner.address,firstMint);
+    await contract.mintTo(owner.address,firstMint);
     expect(await contract.totalSupply()).to.equal(firstMint);
   });
 
   it("Should failed : Mint over Max cap", async function(){
-    await expect(contract['mint(address,uint256)'](owner.address,firstMint))
-        .to.be.revertedWith('BEP20Capped: cap exceeded');
+    await expect(contract.mintTo(owner.address,firstMint))
+        .to.be.revertedWith('ERC20Capped: cap exceeded');
   });
 
   it("Should the right total supply after minting again and same with max cap", async () => {
     // https://ethereum.stackexchange.com/a/100009
-    await contract['mint(address,uint256)'](owner.address,secondMint);
+    await contract.mintTo(owner.address,secondMint);
     expect(await contract.totalSupply()).to.equal(capped);
   });
 
 
   it("Mint over Max cap", async function(){
-    await expect(contract['mint(address,uint256)'](owner.address,firstMint))
-        .to.be.revertedWith('BEP20Capped: cap exceeded');
-    
-    await expect(contract['mint(address,uint256)'](owner.address,1))
-    .to.be.revertedWith('BEP20Capped: cap exceeded');
+    await expect(contract.mintTo(owner.address,firstMint))
+        .to.be.revertedWith('ERC20Capped: cap exceeded');
+
+    await expect(contract.mintTo(owner.address,1))
+    .to.be.revertedWith('ERC20Capped: cap exceeded');
   });
 
 
@@ -81,24 +77,24 @@ describe("NBT", () => {
 
   it("Should failed transfer more than amount", async function(){
     await expect(contract.transfer(alice.address, capped))
-        .to.be.revertedWith('BEP20: transfer amount exceeds balance');
+        .to.be.revertedWith('ERC20: transfer amount exceeds balance');
 
     await expect(contract.connect(alice).transfer(bob.address, 1001))
-        .to.be.revertedWith('BEP20: transfer amount exceeds balance');
+        .to.be.revertedWith('ERC20: transfer amount exceeds balance');
   });
 
   it('burn should be success', async () => {
       await contract.connect(alice).burn(100);
       expect(await contract.balanceOf(alice.address)).to.equal(900);
-      expect(await contract.totalSupply()).to.equal(capped.sub(100));
+      expect(await contract.totalSupply()).to.equal(capped - 100n);
   })
 
   it('burn should be failed execed balance', async () => {
     await expect(contract.connect(alice).burn(10000))
-        .to.be.revertedWith('BEP20: burn amount exceeds balance');
+        .to.be.revertedWith('ERC20: burn amount exceeds balance');
 
     await expect(contract.connect(bob).burn(100))
-        .to.be.revertedWith('BEP20: burn amount exceeds balance');
+        .to.be.revertedWith('ERC20: burn amount exceeds balance');
   })
 
   it('approve', async () => {
@@ -124,7 +120,7 @@ describe("NBT", () => {
     expect(allowance).to.equal(200);
 
     await expect(contract.burnFrom(alice.address,250))
-    .to.be.revertedWith('BEP20: burn amount exceeds allowance');
+    .to.be.revertedWith('ERC20: burn amount exceeds allowance');
    })
    
    it('burn form allowance failed not have allowance', async () => {
@@ -132,13 +128,13 @@ describe("NBT", () => {
     expect(allowance).to.equal(0);
 
     await expect(contract.connect(bob).burnFrom(alice.address,150))
-    .to.be.revertedWith('BEP20: burn amount exceeds allowance');
+    .to.be.revertedWith('ERC20: burn amount exceeds allowance');
    })
 
    it('burn form allowance', async () => {
     await contract.burnFrom(alice.address,150);
     expect(await contract.balanceOf(alice.address)).to.equal(750);
-    expect(await contract.totalSupply()).to.equal(capped.sub(100+150));
+    expect(await contract.totalSupply()).to.equal(capped - 250n);
    })
 
    it('allowance should be deduct after burn form', async () => {
@@ -148,7 +144,7 @@ describe("NBT", () => {
 
    it('transfer form failed amount exceeds allowance', async () => {
     await expect(contract.transferFrom(alice.address,bob.address,100))
-    .to.be.revertedWith('BEP20: transfer amount exceeds allowance');
+    .to.be.revertedWith('ERC20: insufficient allowance');
    })
 
   
@@ -185,7 +181,7 @@ describe("NBT", () => {
    it("delegates on behalf of the signature", async () => {
       const nonce = (await contract.nonces(delegator.address)).toString();
       const expiry = 10e9;
-      const { v, r, s } = await signDelegation(contract.address, network.config.chainId!, delegator.address, delegatee.address, nonce, expiry);
+      const { v, r, s } = await signDelegation(await contract.getAddress(), network.config.chainId!, delegator, delegatee.address, nonce, expiry);
       const actualDelegationBefore = await contract.delegates(delegator.address);
       expect(actualDelegationBefore).to.equal('0x0000000000000000000000000000000000000000');
       const tx = await contract.delegateBySig(delegatee.address, nonce, expiry, v, r, s);
@@ -197,12 +193,12 @@ describe("NBT", () => {
       .withArgs(delegator.address, '0x0000000000000000000000000000000000000000', delegatee.address);
 
   });
-  
+
   it("reverts delegate signature the nonce is bad ", async () => {
     const nonce = 9;
     const expiry = 10e9;
-    const { v, r, s } = await signDelegation(contract.address, network.config.chainId!, delegator.address, delegatee.address, nonce, expiry);
-    await expect(contract.delegateBySig(delegatee.address, nonce, expiry, v, r, s)).to.be.revertedWith('invalid nonce');
+    const { v, r, s } = await signDelegation(await contract.getAddress(), network.config.chainId!, delegator, delegatee.address, nonce, expiry);
+    await expect(contract.delegateBySig(delegatee.address, nonce, expiry, v, r, s)).to.be.revertedWith('NBT::delegateBySig: invalid nonce');
   });
 
   it("transfer ownership to delegator", async () => {
@@ -220,13 +216,13 @@ describe("NBT", () => {
 async function signDelegation(
   contractAddress:string,
   chainId: number,
-  delegatorAddr: string,
+  delegatorSigner: HardhatEthersSigner,
   delegateeAddr: string,
   nonce: number,
   expiry: number
-): Promise<Signature> {
-  const EIP712Domain = {
-    name: 'Nano Byte Token',
+): Promise<any> {
+  const domain = {
+    name: 'NanoByte Token',
     chainId: chainId,
     verifyingContract: contractAddress,
   };
@@ -238,23 +234,7 @@ async function signDelegation(
     ],
   };
   const value = { delegatee: delegateeAddr, nonce: nonce, expiry: expiry };
-  const digest = utils._TypedDataEncoder.hash(EIP712Domain, types, value);
-  return getSigningKey(delegatorAddr).signDigest(digest);
-}
 
-function getSigningKey(address: string): utils.SigningKey {
-  const { initialIndex, count, path, mnemonic } = network.config.accounts as {
-    initialIndex: number;
-    count: number;
-    path: string;
-    mnemonic: string;
-  };
-  const parentNode = utils.HDNode.fromMnemonic(mnemonic).derivePath(path);
-  for (let index = initialIndex; index < initialIndex + count; index++) {
-    const node = parentNode.derivePath(index.toString());
-    if (node.address == address) {
-      return new utils.SigningKey(node.privateKey);
-    }
-  }
-  throw `No private key found for address ${address}`;
+  const signature = await delegatorSigner.signTypedData(domain, types, value);
+  return ethers.Signature.from(signature);
 }

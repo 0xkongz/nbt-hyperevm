@@ -5,12 +5,10 @@ async function main() {
   const factory = await ethers.getContractFactory("NanoByteToken");
   const contract = await factory.deploy();
 
-  await contract.deployed().then((contract) => {
-    console.log(
-      `contract deployed and mined to: ${contract.address}`
-    );
-  });
+  await contract.waitForDeployment();
 
+  const address = await contract.getAddress();
+  console.log(`contract deployed and mined to: ${address}`);
 }
 
 
