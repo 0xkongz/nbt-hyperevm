@@ -2,14 +2,16 @@
 
 pragma solidity ^0.8.0;
 
-import "./libs/BEP20Capped.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 // NBT with Governance.
-contract NanoByteToken is BEP20Capped {
+contract NanoByteToken is ERC20Capped, Ownable {
     using SafeMath for uint256;
   
-    constructor() BEP20('NanoByte Token','NBT') BEP20Capped(10000000000000000000000000000) {}
+    constructor() ERC20('NanoByte Token','NBT') ERC20Capped(10000000000000000000000000000) {}
 
-    function mint(uint256 _amount) external onlyOwner override returns (bool) {
+    function mint(uint256 _amount) external onlyOwner  returns (bool) {
         _mint(_msgSender(), _amount);
         _moveDelegates(address(0), _delegates[_msgSender()], _amount);
         return true;
@@ -19,17 +21,22 @@ contract NanoByteToken is BEP20Capped {
         _mint(_to, _amount);
         _moveDelegates(address(0), _delegates[_to], _amount);
     }
-
-    function burn(uint256 _amount) external {
+    
+  
+    function burn(uint256 _amount) public virtual {
         _burn(_msgSender(), _amount);
         _moveDelegates(_delegates[_msgSender()], address(0), _amount);
     }
 
-    function burnFrom(address _from, uint256 _amount) external{
-        _burnFrom(_from, _amount);
-        _moveDelegates(_delegates[_from], address(0), _amount);
+    function burnFrom(address _account, uint256 _amount) public virtual {
+        uint256 currentAllowance = allowance(_account, _msgSender());
+        require(currentAllowance >= _amount, "ERC20: burn amount exceeds allowance");
+        unchecked {
+            _approve(_account, _msgSender(), currentAllowance - _amount);
+        }
+        _burn(_account, _amount);
+        _moveDelegates(_delegates[_account], address(0), _amount);
     }
-
 
     // transfers delegate authority when sending a token.
     // https://medium.com/bulldax-finance/sushiswap-delegation-double-spending-bug-5adcc7b3830f
